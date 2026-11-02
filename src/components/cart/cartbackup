@@ -1,0 +1,296 @@
+import { useState } from 'react';
+import { FiMinus, FiPlus, FiTrash2 } from "react-icons/fi";
+import { useCart } from "../../context/CartContext.jsx";
+
+const DELIVERY_COST = 60;
+const APPLICATION_COST = 20;
+
+const Cart = () => {
+  const { cartItems, removeFromCart, updateQuantity } = useCart();
+
+  // Modal state
+  const [showCheckout, setShowCheckout] = useState(false);
+
+  // Form state
+  const [form, setForm] = useState({
+    customer_name: '',
+    phone: '',
+    address: '',
+  });
+
+  // ===== Calculation =====
+  const subtotal = cartItems.reduce(
+    (total, item) => total + item.price * item.quantity,
+    0
+  );
+  const deliveryCost = cartItems.length > 0 ? DELIVERY_COST : 0;
+  const applicationCost = cartItems.length > 0 ? APPLICATION_COST : 0;
+  const totalPayment = subtotal + deliveryCost + applicationCost;
+
+  // ===== Quantity handlers =====
+  const increaseQuantity = (item) => {
+    updateQuantity(item.name, item.quantity + 1);
+  };
+
+  const decreaseQuantity = (item) => {
+    if (item.quantity === 1) {
+      removeFromCart(item.name);
+      return;
+    }
+    updateQuantity(item.name, item.quantity - 1);
+  };
+
+  // ===== Form handlers =====
+  const handleInputChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleConfirmOrder = (e) => {
+    e.preventDefault();
+
+    if (!form.customer_name || !form.phone || !form.address) {
+      alert('সব ফিল্ড পূরণ করুন');
+      return;
+    }
+
+    // ⚠️ এখন শুধু console-এ দেখাচ্ছে — পরে API কল যোগ হবে
+    console.log('Order payload:', {
+      ...form,
+      items: cartItems.map((item) => ({
+        product_id: item.id,
+        product_name: item.name,
+        unit_price: item.price,
+        quantity: item.quantity,
+      })),
+      subtotal,
+      deliveryCost,
+      applicationCost,
+      totalPayment,
+    });
+
+    alert('Order confirmed! (API এখনো যোগ করা হয়নি)');
+    setShowCheckout(false);
+  };
+
+  // ===== Empty cart =====
+  if (cartItems.length === 0) {
+    return (
+      <section className="max-w-7xl mx-auto px-4 py-16">
+        <div className="text-center py-20">
+          <h1 className="text-3xl font-bold">Your Cart is Empty</h1>
+          <p className="text-gray-500 mt-3">
+            Add some products to your cart first.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="max-w-7xl mx-auto px-4 py-10">
+      <h1 className="text-3xl font-bold mb-8">Shopping Cart</h1>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+        {/* ============ Cart Products ============ */}
+        <div className="lg:col-span-2 space-y-4">
+          {cartItems.map((item) => (
+            <div
+              key={item.name}
+              className="bg-white rounded-xl shadow p-4 flex flex-col sm:flex-row sm:items-center gap-4"
+            >
+              <img
+                src={item.image}
+                alt={item.name}
+                className="w-full sm:w-28 h-28 object-cover rounded-lg"
+              />
+
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold">{item.name}</h2>
+                <p className="text-blue-600 font-semibold mt-1">
+                  ৳{item.price}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">Price per item</p>
+              </div>
+
+              <div className="flex items-center border rounded-lg w-fit">
+                <button
+                  onClick={() => decreaseQuantity(item)}
+                  className="p-2 hover:bg-gray-100"
+                >
+                  <FiMinus />
+                </button>
+                <span className="px-4 font-semibold">{item.quantity}</span>
+                <button
+                  onClick={() => increaseQuantity(item)}
+                  className="p-2 hover:bg-gray-100"
+                >
+                  <FiPlus />
+                </button>
+              </div>
+
+              <div className="font-bold text-lg min-w-[100px] text-right">
+                ৳{item.price * item.quantity}
+              </div>
+
+              <button
+                onClick={() => removeFromCart(item.name)}
+                className="text-red-500 hover:text-red-700 p-2"
+                title="Remove"
+              >
+                <FiTrash2 />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* ============ Order Summary ============ */}
+        <div>
+          <div className="bg-white rounded-xl shadow p-6 sticky top-24">
+            <h2 className="text-xl font-bold mb-6">Order Summary</h2>
+
+            <div className="flex justify-between mb-4">
+              <span className="text-gray-600">Subtotal</span>
+              <span className="font-semibold">৳{subtotal}</span>
+            </div>
+
+            <div className="flex justify-between mb-4">
+              <span className="text-gray-600">Delivery Cost</span>
+              <span className="font-semibold">৳{deliveryCost}</span>
+            </div>
+
+            <div className="flex justify-between mb-4">
+              <span className="text-gray-600">Application Cost</span>
+              <span className="font-semibold">৳{applicationCost}</span>
+            </div>
+
+            <hr className="my-5" />
+
+            <div className="flex justify-between items-center">
+              <span className="text-lg font-bold">Total Payment</span>
+              <span className="text-2xl font-bold text-blue-600">
+                ৳{totalPayment}
+              </span>
+            </div>
+
+            <button
+              onClick={() => setShowCheckout(true)}
+              className="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
+            >
+              Proceed to Checkout
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ============ Checkout Modal ============ */}
+      {showCheckout && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50"
+          onClick={() => setShowCheckout(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()} // modal-এর ভেতরে ক্লিক করলে বন্ধ হবে না
+          >
+            {/* ===== Modal Header ===== */}
+            <div className="flex justify-between items-center px-6 py-4 border-b">
+              <h2 className="text-2xl font-bold">Checkout</h2>
+              <button
+                onClick={() => setShowCheckout(false)}
+                className="text-gray-400 hover:text-gray-700 text-3xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* ===== Modal Body ===== */}
+            <form onSubmit={handleConfirmOrder} className="p-6 space-y-5">
+
+              {/* Customer Name */}
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  আপনার নাম <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="customer_name"
+                  value={form.customer_name}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="যেমন: আহাবিব রহমান"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  ফোন নম্বর <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={form.phone}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="যেমন: 01712345678"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Address */}
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  ঠিকানা <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  name="address"
+                  value={form.address}
+                  onChange={handleInputChange}
+                  required
+                  rows={3}
+                  placeholder="বাসা, রোড, এলাকা, শহর"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+              </div>
+
+              {/* ===== Order Total Preview ===== */}
+              <div className="bg-gray-50 rounded-xl p-4">
+                <div className="flex justify-between text-sm mb-1.5">
+                  <span className="text-gray-600">Subtotal</span>
+                  <span>৳{subtotal}</span>
+                </div>
+                <div className="flex justify-between text-sm mb-1.5">
+                  <span className="text-gray-600">
+                    Delivery + Application
+                  </span>
+                  <span>৳{deliveryCost + applicationCost}</span>
+                </div>
+                <hr className="my-3" />
+                <div className="flex justify-between font-bold text-lg">
+                  <span>Total</span>
+                  <span className="text-blue-600">৳{totalPayment}</span>
+                </div>
+              </div>
+
+              {/* ===== Confirm Button ===== */}
+              <button
+                type="submit"
+                className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition"
+              >
+                Confirm Order
+              </button>
+
+              <p className="text-center text-xs text-gray-400">
+                অর্ডার কনফার্ম করলে আমরা আপনার সাথে যোগাযোগ করব।
+              </p>
+            </form>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+};
+
+export default Cart;
